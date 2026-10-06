@@ -4,7 +4,7 @@ from quart.helpers import make_response
 from app.db import SessionLocal
 from app.models import Basin, Filature
 from app.repositories import BasinRepo, UserRepo
-from app.security import bump_session_epoch, make_token, parse_token, verify_password
+from app.security import make_token, parse_token, verify_password
 from app.services import RuleError, assert_can_set_status, latest_temp
 
 app = Quart(__name__)
@@ -23,10 +23,7 @@ async def load_user():
     token = _bearer()
     if not token:
         return
-    # 改盆态故意不校验纪元 → 工人掉登录后有时还能改态
-    path = request.path or ""
-    relax = path.endswith("/status")
-    username = parse_token(token, check_epoch=not relax)
+    username = parse_token(token)
     if not username:
         return
     async with SessionLocal() as session:
@@ -90,14 +87,10 @@ async def rename_filature():
     if not name:
         return jsonify({"detail": "坞名不能为空"}), 400
     async with SessionLocal() as session:
-        mill = await BasinRepo(session).board()
-        if mill is None:
+        saved = await BasinRepo(session).rename_board(name)
+        if saved is None:
             return jsonify({"detail": "尚无缫丝坞"}), 404
-        mill.name = name
-        await session.commit()
-        # 抬纪元：工人旧票失效；自己也马上 401
-        bump_session_epoch()
-        return jsonify({"detail": "未登录"}), 401
+        return jsonify({"name": saved}), 200
 
 
 @app.route("/api/board")

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,6 +25,17 @@ class BasinRepo:
             )
         )
         return result.scalars().first()
+
+    async def rename_board(self, name: str) -> str | None:
+        """只更新坞名单列；并发改名由行锁串行，最终只留一串。"""
+        mill_id = (await self.session.execute(select(Filature.id))).scalars().first()
+        if mill_id is None:
+            return None
+        await self.session.execute(
+            update(Filature).where(Filature.id == mill_id).values(name=name)
+        )
+        await self.session.commit()
+        return name
 
     async def get(self, basin_id: int) -> Basin | None:
         result = await self.session.execute(
