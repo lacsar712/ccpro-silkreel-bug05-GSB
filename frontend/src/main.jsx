@@ -49,15 +49,11 @@ function Yard() {
   const [picked, setPicked] = useState(null);
   const [temp, setTemp] = useState("40");
   const [err, setErr] = useState("");
-  const [heroName, setHeroName] = useState("");
-  const [drawerMill, setDrawerMill] = useState("");
   const [newName, setNewName] = useState("");
 
   async function refresh() {
     const data = await api("/api/board");
     setBoard(data);
-    if (!heroName) setHeroName(data.filature);
-    if (!drawerMill) setDrawerMill(data.filature);
     if (picked) {
       setPicked(data.basins.find((b) => b.id === picked.id) || data.basins[0]);
     }
@@ -70,10 +66,9 @@ function Yard() {
         method: "POST",
         body: JSON.stringify({ name: newName }),
       });
-      setHeroName(newName);
+      setNewName("");
+      await refresh();
     } catch (ex) {
-      // 接口 401 但库可能已改：大字跟输入走，抽屉/流水仍旧名
-      setHeroName(newName);
       setErr(ex.message);
     }
   }
@@ -122,9 +117,9 @@ function Yard() {
     <div class="yard">
       <div class="topbar">
         <div>
-          <h1>{heroName || board.filature}</h1>
+          <h1>{board.filature}</h1>
           <p>{board.riverside} · 点盆登记汤温；已缫完须最近汤温 38～42℃</p>
-          <p class="flow-head">流水抬头：{drawerMill || board.filature}</p>
+          <p class="flow-head">流水抬头：{board.filature}</p>
           <div class="rename-box">
             <input
               value={newName}
@@ -165,7 +160,7 @@ function Yard() {
       </div>
       {picked && (
         <div class="drawer">
-          <p class="drawer-mill">抽屉抬头：{drawerMill || board.filature}</p>
+          <p class="drawer-mill">抽屉抬头：{board.filature}</p>
           <h3>
             {picked.code} · {STATUS_LABEL[picked.status]}
           </h3>
